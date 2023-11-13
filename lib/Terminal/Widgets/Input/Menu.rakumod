@@ -10,7 +10,6 @@ class Terminal::Widgets::Input::Menu
  does Terminal::Widgets::Input {
     has UInt:D $.selected = 0;
     has UInt:D $.top-item = 0;
-    has UInt:D $.row      = 0;
     has        $.hint-target;
     has        $.items;
     has        %!hotkey;
@@ -19,13 +18,14 @@ class Terminal::Widgets::Input::Menu
     submethod TWEAK() {
         self.Terminal::Widgets::Input::TWEAK;
         for $!items.kv -> $i, $item {
-            %!hotkey{$_} = $i for $item<hotkeys>[];
+            %!hotkey{$_} = $i for ($item<hotkeys> // []).words;
         }
     }
 
     # gist that doesn't pull in the widget grid
     method gist() {
         my @strings = "items:$!items.elems()",
+                      "top-item:$!top-item",
                       "selected:$!selected",
                       "hotkeys:%!hotkey.elems()",
                       "hint-target:$!hint-target.gist()";
@@ -46,19 +46,18 @@ class Terminal::Widgets::Input::Menu
         self.clear-frame;
         self.draw-framing;
 
-        #for @.items.kv -> $i, $item {
         for ^$h {
-            my $i         = $!top-item + $_;
+            last if $!items.end < my $i = $.top-item + $_;
+
             my $item      = $!items[$i];
             my $title     = $item<title>;
             my $extra     = 1 max $w - 1 - duospace-width($title);
             my $formatted = " $title" ~ ' ' x $extra;
-            my $color     = $i == $!selected
-              ?? %.color<highlight>
-              !! ( $item<color> // $base-color );
-
-            $.grid.set-span($x, $_, $formatted, $color);
+            my $color     = $i == $!selected ?? %.color<highlight>
+                                             !! $item<color> // $base-color;
+            $.grid.set-span($x, $y + $_, $formatted, $color);
         }
+
         self.composite(:$print);
     }
 
@@ -70,11 +69,20 @@ class Terminal::Widgets::Input::Menu
         $target.?set-text($hint);
     }
 
-    #| Set an item as selected
+    #| Scroll to keep the selected element visible
+    method auto-scroll() {
+        my $h         = $.h - $.layout.computed.height-correction;
+        my $last-top  = 0 max ($!items.elems - $h);
+        $!top-item min= $!selected min $last-top;
+        $!top-item max= $!selected + 1 - $h;
+    }
+
+    #| Set an item as selected and make sure it is visible
     method set-selected(Int:D $selected) {
         if 0 <= $selected <= @.items.end {
             $!selected = $selected;
             self.set-hint(@.items[$!selected]<hint> // '');
+            self.auto-scroll;
         }
     }
 
@@ -96,28 +104,12 @@ class Terminal::Widgets::Input::Menu
 
     #| Process a prev-item event
     method prev-item(Bool:D :$print = True) {
-        return if $!selected.not;
-
-        if $!row {
-          $!row-- if $!row;
-        } else {
-          $!top-item-- if $!top-item;
-          self.full-refresh;
-        }
         self.set-selected($!selected - 1);
         self.refresh-value(:$print);
     }
 
     #| Process a next-item event
     method next-item(Bool:D :$print = True) {
-        return if $!selected.succ > $!items.elems.pred;
-
-        if $!row == $.h.pred {
-          $!top-item++;
-          self.full-refresh;
-        } else {
-          $!row++ if $!row < $.h;
-        }
         self.set-selected($!selected + 1);
         self.refresh-value(:$print);
     }
