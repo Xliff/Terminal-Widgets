@@ -52,11 +52,22 @@ class Style
     }
 
     multi method gist(Style:D:) {
-        $.sizing-box ~ ' ' ~
+        my $padding = $.has-padding ?? ($.pt, $.pr, $.pb, $.pl).join(',') !! 0;
+        my $border  = $.has-border  ?? ($.bt, $.br, $.bb, $.bl).join(',') !! 0;
+        my $margin  = $.has-margin  ?? ($.mt, $.mr, $.mb, $.ml).join(',') !! 0;
+        my $wc      = $.width-correction;
+        my $hc      = $.height-correction;
+        my $lc      = $.left-correction;
+        my $rc      = $.right-correction;
+        my $tc      = $.top-correction;
+        my $bc      = $.bottom-correction;
+
         'w:(' ~ ($.min-w, $.set-w, $.max-w).map({ $_ // '*'}).join(':')
          ~ (' min' if $.minimize-w) ~ ') ' ~
         'h:(' ~ ($.min-h, $.set-h, $.max-h).map({ $_ // '*'}).join(':')
          ~ (' min' if $.minimize-h) ~ ')'
+         ~ (" $.sizing-box p:$padding b:$border m:$margin wc:$wc=$lc+$rc hc:$hc=$tc+$bc"
+            if $.has-framing)
     }
 
     multi method gist(Style:U:) {
@@ -75,11 +86,12 @@ role Dynamic {
     has UInt    $.x        is rw;
     has UInt    $.y        is rw;
 
-
     method compute-layout() { ... }
     method propagate-xy()   { ... }
 
     method default-styles() { hash() }
+
+    method gist-name() { self.^name.subst('Terminal::Widgets::', '') }
 
     method update-requested(*%updates) {
         self.uncompute;
@@ -148,14 +160,15 @@ role Dynamic {
 #| A leaf node in the layout tree (no possible children)
 class Leaf does Dynamic {
     multi method gist(Leaf:U:) {
-        self.^name ~ ':U'
+        self.gist-name ~ ':U'
     }
 
     multi method gist(Leaf:D:) {
-        self.^name ~ '|' ~
+        self.gist-name ~ '|' ~
         "requested: [$.requested.gist()] " ~
         "computed: [$.computed.gist()] " ~
-        "x:{$.x // '*'} y:{$.y // '*' }"
+        "x:{$.x // '*'} y:{$.y // '*' }" ~
+        (" --- [$.widget.gist()]" if $.widget)
     }
 
     method all-set(Leaf:D:) { self.is-set }
@@ -182,16 +195,17 @@ class Node does Dynamic {
     }
 
     multi method gist(Node:U:) {
-        self.^name ~ ':U'
+        self.gist-name ~ ':U'
     }
 
     multi method gist(Node:D:) {
         my @child-gists = @.children.map: *.gist.indent(4);
-        self.^name ~ '|' ~
+        self.gist-name ~ '|' ~
         "requested: [$.requested.gist()] " ~
         "computed: [$.computed.gist()] " ~
         "x:{$.x // '*'} y:{$.y // '*' }" ~
         (" :vertical" if $.vertical) ~
+        (" --- [$.widget.gist()]" if $.widget) ~
         ("\n" ~ @child-gists.join("\n") if @.children)
     }
 
@@ -493,7 +507,7 @@ role WidgetBuilding {
 
     #| Throw an exception if a widget with a given id is already known
     method !ensure-new-id($id) {
-        die "This {self.^name} already contains a widget with id '$id'"
+        die "This {self.gist-name} already contains a widget with id '$id'"
             if %.by-id{$id}:exists;
     }
 

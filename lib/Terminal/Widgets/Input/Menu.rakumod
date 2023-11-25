@@ -22,15 +22,14 @@ class Terminal::Widgets::Input::Menu
         }
     }
 
-    # gist that doesn't pull in the widget grid
-    method gist() {
-        my @strings = "items:$!items.elems()",
-                      "top-item:$!top-item",
-                      "selected:$!selected",
-                      "hotkeys:%!hotkey.elems()",
-                      "hint-target:$!hint-target.gist()";
-
-        self.Terminal::Widgets::Input::gist ~ ',' ~ @strings.join(',')
+    # Menu-specific gist flags
+    method gist-flags() {
+        |self.Terminal::Widgets::Input::gist-flags,
+        "items:$!items.elems()",
+        "top-item:$!top-item",
+        "selected:$!selected",
+        "hotkeys:%!hotkey.elems()",
+        "hint-target:$!hint-target.gist()"
     }
 
     #| Refresh the whole input
@@ -146,6 +145,6 @@ class Terminal::Widgets::Input::Menu
     multi method handle-event(Terminal::Widgets::Events::MouseEvent:D
                               $event where !*.mouse.pressed, AtTarget) {
         self.toplevel.focus-on(self);
-        self.select($event.relative-to(self)[1]);
+        self.select($.top-item + $event.relative-to(self)[1]);
     }
 }
