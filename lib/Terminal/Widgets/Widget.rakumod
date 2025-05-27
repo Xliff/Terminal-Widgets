@@ -101,6 +101,8 @@ class Terminal::Widgets::Widget
 
     # gist that improves readability and doesn't pull in widget backing grid
     method gist() {
+        return "({ self.^name })" without self;
+
         my @flags = self.gist-flags.grep(?*);
 
         # Determine dirty areas without changing dirty state
