@@ -350,6 +350,9 @@ class Node does Dynamic {
                                     .sort({-(.computed.min-h +
                                              .computed.height-correction(MarginBox))})
                                     .sort(-?*.computed.minimize-h);
+
+            @unset-h.gist.say;
+
             while @unset-h {
                 my $sum    = @unset-h.map(*.computed.share-h).sum;
                 my $node   = @unset-h.shift;
