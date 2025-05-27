@@ -26,7 +26,7 @@ sub throw-cannot-stringify($type, $conversion-method, $conversion-result) {
 
 
 #| A directly renderable styled text span
-class RenderSpan {
+class RenderSpan is export {
     # XXXX: Include an ID or reference marker of some type to handle user
     #       interaction with the rendered span?
 
@@ -96,7 +96,7 @@ class InterpolantSpan does SemanticSpan {
     method interpolate(%vars --> StringSpan:D) {
         # XXXX: Hack ignoring flags completely for now
         my $string = %vars{$.var-name}
-                  // '[MISSING TRANSLATION VARIABLE ' ~ $.var-name.raku ~ ']';
+                  // '[MISSING INTERPOLATION VARIABLE ' ~ $.var-name.raku ~ ']';
         StringSpan.new(:$.string, :%.attributes);
     }
 
@@ -129,7 +129,8 @@ class SpanTree {
     #| attributes fanned out to children; child node attributes are allowed
     #| to override parent attributes or add new ones.
     method flatten(%parent-attributes?) {
-        my %child-base-attributes = |%parent-attributes, |%.attributes;
+        my %child-base-attributes = merge-attributes(%parent-attributes,
+                                                     %.attributes);
         @.children.map(*.flatten(%child-base-attributes)).flat
     }
 

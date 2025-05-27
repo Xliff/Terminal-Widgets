@@ -324,6 +324,16 @@ class Terminal::Widgets::Widget
         0 max $.h - $.layout.computed.height-correction
     }
 
+    #| Compute the X, Y, W, H rect of the content area (widget minus framing);
+    #| all values are returned as UInt:D (>= 0)
+    method content-rect(Terminal::Widgets::Layout::Style:D $layout
+                        = self.layout.computed) {
+        (0 max $layout.left-correction,
+         0 max $layout.top-correction,
+         0 max $.w - $layout.width-correction,
+         0 max $.h - $layout.height-correction)
+    }
+
     #| Clear the frame and set it all-dirty (so it requires composite)
     method clear-frame() {
         $.grid.clear;
@@ -435,15 +445,15 @@ class Terminal::Widgets::Widget
                 # XXXX: Currently leaves untouched split character cells;
                 #       should this overwrite with ' ' instead?
 
-                for .text.comb {
-                    my $width  = $locale.width($_);
+                for .text.comb -> $char {
+                    my $width  = $locale.width($char);
                     my $c-next = $line-x + $width;
                     last if $c-next > $w;
 
                     if $x-scroll <= $span-x {
                         # Update optionally-colored first cell;
                         # empty second cell if character was wide.
-                        my $cell = .color ?? $.grid.cell($_, .color) !! $_;
+                        my $cell = .color ?? $.grid.cell($char, .color) !! $char;
                         $.grid.change-cell($line-x,     $line-y, $cell);
                         $.grid.change-cell($line-x + 1, $line-y, '')
                             if $width > 1;
